@@ -1,24 +1,19 @@
-const agenda = require("../jobs/agenda");
+const Sequence = require("../models/sequenceFlowchart");
+const { scheduleEmail } = require("../services/scheduleEmail");
+const asyncHandler = require("express-async-handler");
 
-const scheduleEmail = async (req, res) => {
-  const { email, body, subject, delay } = req.body;
+const schedule = asyncHandler(async (req, res) => {
+  const { nodes, edges } = req.body;
   try {
-    const job = await agenda.schedule(delay, "send email", {
-      email,
-      subject,
-      body,
-    });
-    const scheduledTime = new Date(job.attrs.nextRunAt).toLocaleString();
-    res.status(200).json({
-      message: "Email scheduled successfully",
-      scheduledTime: scheduledTime,
-    });
-  } catch (error) {
-    console.error("Error scheduling email:", error);
-    res.status(500).json({ message: "Error scheduling email" });
-  }
-};
+    const newSequence = new Sequence({ nodes, edges });
+    await newSequence.save();
 
-module.exports = {
-  scheduleEmail,
-};
+    await scheduleEmail();
+    res.status(200).send("Sequence saved and emails scheduled");
+  } catch (error) {
+    console.log("error saving sequence", error);
+    res.status(500).send("Error saving sequence");
+  }
+});
+
+module.exports = schedule;
